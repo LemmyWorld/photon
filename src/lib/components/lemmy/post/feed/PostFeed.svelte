@@ -11,6 +11,7 @@
 
   export let posts: PostView[]
   export let community: boolean = false
+  export let feedData: any
   let etc = $$restProps
 
   $: combinedPosts = combineCrossposts(posts)
@@ -22,14 +23,6 @@
   class="flex flex-col list-none {$userSettings.view == 'card'
     ? 'gap-3 md:gap-4'
     : 'divide-y'} divide-slate-200 dark:divide-zinc-800"
-  style={$userSettings.leftAlign
-    ? `--template-areas: 
-'media meta'
-'media title'
-'media body'
-'embed embed'
-'actions actions'; --template-columns: auto 1fr;`
-    : ``}
 >
   {#if posts?.length == 0}
     <div class="h-full grid place-items-center">
@@ -47,15 +40,7 @@
   {:else}
     {#each combinedPosts as post, index}
       {#if !($userSettings.hidePosts.deleted && post.post.deleted) && !($userSettings.hidePosts.removed && post.post.removed)}
-        <li
-          in:fly|global={{
-            y: -8,
-            duration: 500,
-            opacity: 0,
-            delay: 100 + index * 20,
-          }}
-          class="relative post-container"
-        >
+        <li class="relative post-container">
           <Post
             hideCommunity={community}
             view={(post.post.featured_community || post.post.featured_local) &&

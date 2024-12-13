@@ -24,34 +24,74 @@
   import Entity from '$lib/components/ui/Entity.svelte'
 
   export let community: CommunityView
+  export let view: 'cozy' | 'compact' = 'compact'
+  export let showCounts: boolean = true
 
   let showInfo = false
 </script>
 
 {#if showInfo}
-  <Modal title={$t('routes.community.title')} bind:open={showInfo}>
+  <Modal title={$t('form.post.community')} bind:open={showInfo}>
     <CommunityCard community_view={community} />
   </Modal>
 {/if}
 
-<div class="py-4 flex flex-col gap-2 text-sm max-w-full relative">
-  <div class="flex flex-row items-center max-w-full w-full">
+<div
+  class={$$props.class ??
+    'py-4 flex flex-col gap-4 text-sm max-w-full relative'}
+>
+  <div
+    class="flex
+     {view == 'cozy'
+      ? 'flex-col gap-2 items-center'
+      : 'flex-row'} max-w-full w-full"
+  >
     <a
       href="/c/{fullCommunityName(
         community.community.name,
-        community.community.actor_id,
+        community.community.actor_id
       )}"
-      class="hover:underline"
+      class="flex-1 w-full overflow-hidden"
+      data-sveltekit-preload-data="tap"
     >
-      <Entity
-        icon={community.community.icon}
-        label={new URL(community.community.actor_id).hostname}
-        name={community.community.title}
-      ></Entity>
+      <div
+        class="flex {view == 'cozy'
+          ? 'flex-col gap-2'
+          : 'flex-row'} gap-2 items-center"
+      >
+        <slot name="icon">
+          <Avatar
+            url={community.community.icon}
+            width={32}
+            alt={community.community.name}
+          />
+        </slot>
+        <div
+          class="flex flex-col overflow-hidden whitespace-nowrap flex-1 min-w-0 flex-shrink"
+        >
+          <div class="font-medium text-base overflow-hidden overflow-ellipsis">
+            {community.community.title}
+          </div>
+          <div
+            class="text-sm text-slate-600 dark:text-zinc-400 flex gap-0.5"
+            class:justify-center={view == 'cozy'}
+          >
+            <span class="overflow-hidden overflow-ellipsis">
+              {new URL(community.community.actor_id).hostname}
+            </span>
+            <span class="overflow-hidden overflow-ellipsis">
+              {#if !showCounts}
+                •
+                <FormattedNumber number={community.counts.subscribers} />
+              {/if}
+            </span>
+          </div>
+        </div>
+      </div>
     </a>
-    <div class="ml-auto flex flex-row items-center gap-2">
+    <div class="flex flex-row items-center gap-2">
       <Button size="square-md" on:click={() => (showInfo = !showInfo)}>
-        <Icon src={InformationCircle} size="16" mini />
+        <Icon src={InformationCircle} size="16" micro />
       </Button>
       <Subscribe {community} let:subscribe let:subscribing>
         <Button
@@ -69,32 +109,39 @@
               community.subscribed = newSubscribed
               addSubscription(
                 community.community,
-                newSubscribed == 'Subscribed',
+                newSubscribed == 'Subscribed'
               )
             }
           }}
+          size="custom"
+          title={isSubscribed(community.subscribed)
+            ? $t('cards.community.subscribed')
+            : $t('cards.community.subscribe')}
           color={isSubscribed(community.subscribed) ? 'elevatedLow' : 'primary'}
-          class={isSubscribed(community.subscribed)
+          class="{isSubscribed(community.subscribed)
             ? 'text-slate-600 dark:text-zinc-400'
             : ''}
+            aspect-square h-8 @md:px-2 @md:min-w-32 @md:aspect-auto"
         >
           <Icon
             src={isSubscribed(community.subscribed) ? Check : Plus}
             size="16"
-            mini
+            micro
             slot="prefix"
           />
-          {#if isSubscribed(community.subscribed)}
-            {$t('cards.community.subscribed')}
-          {:else}
-            {$t('cards.community.subscribe')}
-          {/if}
+          <span class="hidden @md:block">
+            {#if isSubscribed(community.subscribed)}
+              {$t('cards.community.subscribed')}
+            {:else}
+              {$t('cards.community.subscribe')}
+            {/if}
+          </span>
         </Button>
       </Subscribe>
     </div>
   </div>
-  {#if community.counts}
-    <div class="flex flex-row gap-3 items-center">
+  {#if showCounts}
+    <div class="flex flex-row gap-3 items-center justify-center">
       {#if community.counts.posts}
         <LabelStat
           content={community.counts.posts.toString()}

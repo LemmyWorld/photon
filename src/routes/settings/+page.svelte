@@ -29,24 +29,53 @@
     ChevronRight,
     GlobeAmericas,
     Icon,
+    Language,
     Plus,
     Trash,
+    ArrowTopRightOnSquare,
   } from 'svelte-hero-icons'
   import MarkdownEditor from '$lib/components/markdown/MarkdownEditor.svelte'
   import { removalTemplate } from '$lib/components/lemmy/moderation/moderation.js'
-  import { Button, Checkbox, Select } from 'mono-svelte'
+  import { Button, Checkbox, Select, Spinner } from 'mono-svelte'
   import ViewSelect from '$lib/components/lemmy/dropdowns/ViewSelect.svelte'
   import { LINKED_INSTANCE_URL } from '$lib/instance.js'
   import { DOMAIN_REGEX_FORMS, removeItem } from '$lib/util.js'
   import Section from './Section.svelte'
   import ToggleSetting from './ToggleSetting.svelte'
   import { locale, locales, t } from '$lib/translations'
-  import { defaultLinks, iconOfLink } from '$lib/components/ui/navbar/link'
+  import { getDefaultLinks, iconOfLink } from '$lib/components/ui/navbar/link'
   import Header from '$lib/components/ui/layout/pages/Header.svelte'
-
-  let pin: string = ''
+  import { profile } from '$lib/auth'
+  import AccountPage from '../profile/(local_user)/settings/+page.svelte'
   let importing = false
   let importText = ''
+
+  let localeMap: Map<
+    string,
+    {
+      name: string
+      translated: number
+      flag: string
+    }
+  > = new Map([
+    ['en', { name: 'English', translated: -1, flag: '🇬🇧' }],
+    ['he', { name: 'עברית', translated: -1, flag: '🇮🇱' }],
+    ['bg', { name: 'български', translated: 0.67, flag: '🇧🇬' }],
+    ['de', { name: 'Deutsch', translated: 0.7, flag: '🇩🇪' }],
+    ['es', { name: 'Español', translated: 0.89, flag: '🇪🇸' }],
+    ['et', { name: 'eesti keel', translated: 0.23, flag: '🇪🇪' }],
+    ['fi', { name: 'suomi', translated: 0.98, flag: '🇫🇮' }],
+    ['fr', { name: 'Français', translated: 0.93, flag: '🇫🇷' }],
+    ['hu', { name: 'Magyar', translated: 0.51, flag: '🇭🇺' }],
+    ['ja', { name: '日本語', translated: 0.93, flag: '🇯🇵' }],
+    ['nl', { name: 'Nederlands', translated: 0.89, flag: '🇳🇱' }],
+    ['pl', { name: 'Polski', translated: 0.91, flag: '🇵🇱' }],
+    ['pt', { name: 'Português', translated: 0.86, flag: '🇵🇹' }],
+    ['tr', { name: 'Türkçe', translated: 0.99, flag: '🇹🇷' }],
+    ['ru', { name: 'Русский', translated: 0.88, flag: '🇷🇺' }],
+    ['zh-Hans', { name: '简体中文', translated: 0.83, flag: '🇨🇳' }],
+    ['zh-Hant', { name: '繁體中文', translated: 0.23, flag: '🇹🇼' }],
+  ])
 </script>
 
 <svelte:head>
@@ -125,80 +154,53 @@
   </div>
 </Header>
 
-<div class="flex flex-col gap-4" style="scroll-behavior: smooth;">
-  <Section title={$t('settings.navigation.title')}>
-    <Setting>
-      <span slot="title">{$t('settings.navigation.dockPos.title')}</span>
-      <span slot="description">
-        {$t('settings.navigation.dockPos.description')}
-      </span>
-      <MultiSelect
-        options={[true, false, null]}
-        optionNames={[
-          $t('settings.navigation.dockPos.top'),
-          $t('settings.navigation.dockPos.bottom'),
-          $t('settings.navigation.dockPos.adaptive'),
-        ]}
-        bind:selected={$userSettings.dock.top}
-      />
-    </Setting>
-    <Setting>
-      <span slot="title">{$t('settings.navigation.panel.title')}</span>
-      <span slot="description">
-        {$t('settings.navigation.panel.description')}
-      </span>
-      <MultiSelect
-        options={[true, false, null]}
-        optionNames={[
-          $t('settings.navigation.panel.on'),
-          $t('settings.navigation.panel.off'),
-          $t('settings.navigation.panel.adaptive'),
-        ]}
-        bind:selected={$userSettings.dock.noGap}
-      />
-    </Setting>
-    <Setting
-      supportedPlatforms={{ desktop: true, tablet: true, mobile: false }}
-    >
-      <span slot="title">{$t('settings.navigation.pins.title')}</span>
-      <span slot="description">
-        {$t('settings.navigation.pins.description')}
-      </span>
-      <div class="flex items-center gap-1 flex-wrap">
-        {#each defaultLinks as pin}
-          <Popover openOnHover placement="bottom">
-            <Button
-              size="square-md"
-              slot="target"
-              disabled={$userSettings.dock.pins
-                ?.map((p) => p.url)
-                ?.includes(pin.url)}
-              on:click={() => {
-                $userSettings.dock.pins = [
-                  ...($userSettings.dock.pins ?? []),
-                  pin,
-                ]
-              }}
-            >
-              <Icon src={iconOfLink(pin.url)} mini size="16" />
-            </Button>
-            <Material
-              slot="popover"
-              padding="none"
-              class="px-4 py-2 flex flex-col"
-            >
-              <span class="font-medium text-lg">{pin.label}</span>
-              <code class="bg-slate-50 dark:!bg-zinc-950 !rounded-md">
-                {pin.url}
-              </code>
-            </Material>
-          </Popover>
-        {/each}
-      </div>
-    </Setting>
-  </Section>
+<div class="flex items-center gap-2 flex-wrap w-full my-5">
+  <Button href="#app" size="sm" class="text-xs" rounding="pill">
+    <Icon src={ArrowTopRightOnSquare} size="14" micro />
+    {$t('settings.app.title')}
+  </Button>
+  <Button href="#nav" size="sm" class="text-xs" rounding="pill">
+    <Icon src={ArrowTopRightOnSquare} size="14" micro />
+    {$t('settings.navigation.title')}
+  </Button>
+  <Button href="#embeds" size="sm" class="text-xs" rounding="pill">
+    <Icon src={ArrowTopRightOnSquare} size="14" micro />
+    {$t('settings.embeds.title')}
+  </Button>
+  <Button href="#lemmy" size="sm" class="text-xs" rounding="pill">
+    <Icon src={ArrowTopRightOnSquare} size="14" micro />
+    {$t('settings.lemmy.title')}
+  </Button>
+  <Button href="#moderation" size="sm" class="text-xs" rounding="pill">
+    <Icon src={ArrowTopRightOnSquare} size="14" micro />
+    {$t('settings.moderation.title')}
+  </Button>
+  <Button href="#other" size="sm" class="text-xs" rounding="pill">
+    <Icon src={ArrowTopRightOnSquare} size="14" micro />
+    {$t('settings.other.title')}
+  </Button>
+</div>
 
-  <Section title={$t('settings.app.title')}>
+<div
+  class="flex flex-col *:py-2 divide-y divide-slate-200 dark:divide-zinc-800"
+  style="scroll-behavior: smooth;"
+>
+  {#if $profile?.jwt}
+    <Section open={false} id="account" title={$t('settings.account.title')}>
+      <div>
+        <Button
+          color="primary"
+          size="lg"
+          href="/profile/settings"
+          class="block"
+        >
+          {$t('profile.profile')}
+          <Icon src={ArrowRight} micro size="16" slot="suffix" />
+        </Button>
+      </div>
+    </Section>
+  {/if}
+  <Section id="app" title={$t('settings.app.title')}>
     <div class="flex flex-col gap-2">
       <Setting>
         <span slot="title" class="inline-flex items-center gap-2">
@@ -207,23 +209,34 @@
         </span>
         <p slot="description">
           {$t('settings.app.lang.description')}
-          <Note>
-            {$t('settings.app.lang.note')}
-          </Note>
           <Link href="/translators" highlight class="text-base font-semibold">
             {$t('settings.app.lang.credits')}
           </Link>
         </p>
+        <!--@ts-ignore-->
         <Select bind:value={$userSettings.language}>
-          <option value={null}>{$t('settings.app.lang.auto')}</option>
+          <option value={null}>
+            <Icon src={Language} size="16" mini />
+            {$t('settings.app.lang.auto')}
+          </option>
           {#each $locales as locale}
+            {@const mapped = localeMap.get(locale) ?? {
+              flag: '',
+              translated: 1,
+              name: locale,
+            }}
             <option value={locale}>
-              {$t(`settings.app.lang.${locale}`, { default: locale })}
+              <span>{mapped?.flag}</span>
+              <span>{mapped?.name}</span>
+              <div
+                class="text-slate-600 dark:text-zinc-400 text-xs ml-auto"
+                data-hide-selected
+                data-label={mapped.translated < 0
+                  ? ''
+                  : `${mapped.translated * 100}%`}
+              ></div>
             </option>
           {/each}
-          {#if $userSettings.debugInfo}
-            <option value="dev">Raw Strings</option>
-          {/if}
         </Select>
       </Setting>
       {#if $locale == 'he'}
@@ -248,10 +261,16 @@
         {/if}
       </p>
     </Setting>
-    <Setting optionClass="flex-[2] max-w-full flex-wrap min-w-0">
+    <Setting
+      optionClass="flex-[2] max-w-full flex-wrap min-w-0 "
+      itemsClass="flex-col !items-start lg:!items-center lg:flex-row"
+    >
       <span slot="title">{$t('settings.app.sort.title')}</span>
       <span slot="description">{$t('settings.app.sort.description')}</span>
-      <div class="flex max-[500px]:flex-col flex-wrap gap-2 w-max max-w-full">
+      <div
+        class="flex flex-row flex-wrap
+          flex-1 gap-2 w-full lg:w-max max-w-full lg:self-end"
+      >
         <div class="max-w-full">
           <Select bind:value={$userSettings.defaultSort.feed}>
             <span slot="label" class="flex items-center gap-1">
@@ -263,7 +282,9 @@
             <option value="Subscribed">
               {$t('filter.location.subscribed')}
             </option>
-            <option value="Moderator">{$t('filter.location.moderator')}</option>
+            <option value="Moderator">
+              {$t('filter.location.moderator')}
+            </option>
           </Select>
         </div>
         <div class="max-w-full">
@@ -292,15 +313,24 @@
       title={$t('settings.app.infiniteScroll.title')}
       description={$t('settings.app.infiniteScroll.description')}
     />
+    <Setting>
+      <span slot="title">{$t('settings.app.thumbnailSide.title')}</span>
+      <span slot="description">
+        {$t('settings.app.thumbnailSide.description')}
+      </span>
+      <MultiSelect
+        options={[true, false]}
+        optionNames={[
+          $t('settings.app.thumbnailSide.left'),
+          $t('settings.app.thumbnailSide.right'),
+        ]}
+        bind:selected={$userSettings.leftAlign}
+      />
+    </Setting>
     <ToggleSetting
-      bind:checked={$userSettings.openLinksInNewTab}
-      title={$t('settings.app.postsInNewTab.title')}
-      description={$t('settings.app.postsInNewTab.description')}
-    />
-    <ToggleSetting
-      bind:checked={$userSettings.displayNames}
-      title={$t('settings.app.displayName.title')}
-      description={$t('settings.app.displayName.description')}
+      bind:checked={$userSettings.posts.reverseActions}
+      title={$t('settings.app.reverseActions.title')}
+      description={$t('settings.app.reverseActions.description')}
     />
     <ToggleSetting
       supportedPlatforms={{ desktop: true, tablet: false, mobile: false }}
@@ -308,6 +338,29 @@
       title={$t('settings.app.limitLayoutWidth.title')}
       description={$t('settings.app.limitLayoutWidth.description')}
     />
+    <ToggleSetting
+      bind:checked={$userSettings.openLinksInNewTab}
+      title={$t('settings.app.postsInNewTab.title')}
+      description={$t('settings.app.postsInNewTab.description')}
+    />
+    <Setting>
+      <span slot="title">{$t('settings.app.font.title')}</span>
+      <span slot="description">{$t('settings.app.font.description')}</span>
+      <Select bind:value={$userSettings.font}>
+        <option value="inter">Inter</option>
+        <option value="satoshi/nunito">Satoshi + Nunito</option>
+        <option value="system">System UI</option>
+        <option value="browser">Browser</option>
+      </Select>
+    </Setting>
+    <Setting>
+      <span slot="title">{$t('settings.app.theming.title')}</span>
+      <span slot="description">{$t('settings.app.theming.description')}</span>
+      <Button href="/theme">
+        {$t('settings.app.theming.link')}
+        <Icon src={ArrowRight} size="16" mini slot="suffix" />
+      </Button>
+    </Setting>
     <ToggleSetting
       bind:checked={$userSettings.randomPlaceholders}
       title={$t('settings.app.placeholders.title')}
@@ -323,37 +376,6 @@
       title={$t('settings.app.duplicateTitles.title')}
       description={$t('settings.app.duplicateTitles.description')}
     />
-    <Setting>
-      <span slot="title">{$t('settings.app.thumbnailSide.title')}</span>
-      <span slot="description">
-        {$t('settings.app.thumbnailSide.title')}
-      </span>
-      <MultiSelect
-        options={[true, false]}
-        optionNames={[
-          $t('settings.app.thumbnailSide.left'),
-          $t('settings.app.thumbnailSide.right'),
-        ]}
-        bind:selected={$userSettings.leftAlign}
-      />
-    </Setting>
-    <Setting itemsClass="flex-col !items-start">
-      <span slot="title">{$t('settings.app.font.title')}</span>
-      <span slot="description">{$t('settings.app.font.description')}</span>
-      <MultiSelect
-        options={['inter', 'satoshi/nunito', 'system', 'browser']}
-        optionNames={['Inter', 'Satoshi/Nunito', 'System UI', 'Browser Font']}
-        bind:selected={$userSettings.font}
-      />
-    </Setting>
-    <Setting>
-      <span slot="title">{$t('settings.app.theming.title')}</span>
-      <span slot="description">{$t('settings.app.theming.description')}</span>
-      <Button href="/theme">
-        {$t('settings.app.theming.link')}
-        <Icon src={ArrowRight} size="16" mini slot="suffix" />
-      </Button>
-    </Setting>
     <Setting>
       <span slot="title">{$t('settings.app.translation.title')}</span>
       <span slot="description">
@@ -395,8 +417,79 @@
       </Setting>
     </div>
   </Section>
+  <Section id="nav" title={$t('settings.navigation.title')}>
+    <Setting>
+      <span slot="title">{$t('settings.navigation.dockPos.title')}</span>
+      <span slot="description">
+        {$t('settings.navigation.dockPos.description')}
+      </span>
+      <MultiSelect
+        options={[true, false, null]}
+        optionNames={[
+          $t('settings.navigation.dockPos.top'),
+          $t('settings.navigation.dockPos.bottom'),
+          $t('settings.navigation.dockPos.adaptive'),
+        ]}
+        bind:selected={$userSettings.dock.top}
+      />
+    </Setting>
+    <Setting>
+      <span slot="title">{$t('settings.navigation.panel.title')}</span>
+      <span slot="description">
+        {$t('settings.navigation.panel.description')}
+      </span>
+      <MultiSelect
+        options={[true, false, null]}
+        optionNames={[
+          $t('settings.navigation.panel.on'),
+          $t('settings.navigation.panel.off'),
+          $t('settings.navigation.panel.adaptive'),
+        ]}
+        bind:selected={$userSettings.dock.noGap}
+      />
+    </Setting>
+    <Setting
+      supportedPlatforms={{ desktop: true, tablet: true, mobile: false }}
+    >
+      <span slot="title">{$t('settings.navigation.pins.title')}</span>
+      <span slot="description">
+        {$t('settings.navigation.pins.description')}
+      </span>
+      <div class="flex items-center gap-1 flex-wrap">
+        {#each getDefaultLinks() as pin}
+          <Popover openOnHover placement="bottom">
+            <Button
+              size="square-md"
+              slot="target"
+              disabled={$userSettings.dock.pins
+                ?.map((p) => p.url)
+                ?.includes(pin.url)}
+              on:click={() => {
+                $userSettings.dock.pins = [
+                  ...($userSettings.dock.pins ?? []),
+                  pin,
+                ]
+              }}
+            >
+              <Icon src={iconOfLink(pin.url)} mini size="16" />
+            </Button>
+            <Material
+              slot="popover"
+              padding="none"
+              class="px-4 py-2 flex flex-col"
+            >
+              <span class="font-medum text-base">{pin.label}</span>
+              <code class="bg-slate-50 dark:!bg-zinc-950 !rounded-md">
+                {pin.url}
+              </code>
+            </Material>
+          </Popover>
+        {/each}
+      </div>
+    </Setting>
+  </Section>
 
-  <Section title={$t('settings.embeds.title')}>
+  <Section id="embeds" title={$t('settings.embeds.title')}>
     <ToggleSetting
       title={$t('settings.embeds.clickToView.title')}
       description={$t('settings.embeds.clickToView.description')}
@@ -441,7 +534,7 @@
     {/if}
   </Section>
 
-  <Section title={$t('settings.lemmy.title')}>
+  <Section id="lemmy" title={$t('settings.lemmy.title')}>
     <ToggleSetting
       bind:checked={$userSettings.posts.showHidden}
       title={$t('settings.lemmy.showHiddenPosts.title')}
@@ -460,7 +553,7 @@
     <ToggleSetting
       bind:checked={$userSettings.markReadPosts}
       title={$t('settings.lemmy.fadeReadPosts.title')}
-      description={$t('settings.lemmy.fadeReadPosts.title')}
+      description={$t('settings.lemmy.fadeReadPosts.description')}
     />
     <ToggleSetting
       bind:checked={$userSettings.crosspostOriginalLink}
@@ -503,10 +596,15 @@
         </Checkbox>
       </div>
     </Setting>
+    <ToggleSetting
+      bind:checked={$userSettings.displayNames}
+      title={$t('settings.app.displayName.title')}
+      description={$t('settings.app.displayName.description')}
+    />
   </Section>
 
-  <Section title={$t('settings.moderation.title')}>
-    <Setting mainClass="md:flex-row flex-col !items-start">
+  <Section id="moderation" title={$t('settings.moderation.title')}>
+    <Setting itemsClass="!flex-col !items-start">
       <span slot="title">{$t('settings.moderation.replyPresets.title')}</span>
       <span slot="description">
         <p>{$t('settings.moderation.replyPresets.description')}</p>
@@ -597,11 +695,23 @@
     </Setting>
   </Section>
 
-  <Section title={$t('settings.other.title')}>
+  <Section id="other" title={$t('settings.other.title')}>
     <ToggleSetting
       bind:checked={$userSettings.debugInfo}
       title={$t('settings.other.debug.title')}
       description={$t('settings.other.debug.description')}
     />
+    <ToggleSetting
+      bind:checked={$userSettings.posts.noVirtualize}
+      title={$t('settings.other.virtualizeFeeds.title')}
+      description={$t('settings.other.virtualizeFeeds.description')}
+    />
   </Section>
 </div>
+
+<style>
+  [data-hide-selected]::before {
+    content: attr(data-label);
+    font-size: small;
+  }
+</style>

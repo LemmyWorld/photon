@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
-  import PostForm from '$lib/components/lemmy/post/PostForm.svelte'
+  import PostForm from '$lib/components/lemmy/post/form/PostForm.svelte'
   import { profile } from '$lib/auth.js'
   import { onDestroy, onMount } from 'svelte'
   import { getSessionStorage, setSessionStorage } from '$lib/session.js'
@@ -48,6 +48,8 @@
     passedCommunity={community}
     on:submit={(e) => goto(`/post/${e.detail.post.id}`)}
   >
-    <Header class="text-3xl font-bold" slot="formtitle">Create Post</Header>
+    <Header class="text-3xl font-bold" slot="formtitle" pageHeader>
+      {$t('routes.createPost')}
+    </Header>
   </PostForm>
 </div>

@@ -11,9 +11,8 @@ It is designed for all features to have an appealing and intuitive design, while
 
 ## Screenshots
 
-![image](https://github.com/Xyphyn/photon/assets/80978739/8e19d8ee-9630-4152-bc7a-17ce2685afb9)
-
-![image](https://github.com/Xyphyn/photon/assets/80978739/e36468f6-03c5-4267-94e8-3bba60b6ccb2)
+![desktop-default-dark](https://github.com/user-attachments/assets/4abda138-427a-48b3-8741-0f3ca3510fd0)
+![desktop-default-light](https://github.com/user-attachments/assets/8356d7eb-16c6-4bd8-ba9a-6d227370ddb0)
 
 ## Self-hosting
 
@@ -142,6 +141,7 @@ Want your instance added here? Make a GitHub issue or make a PR! (this is for ge
 | [~~photon.zhenyapav.com~~ (Has not updated since v1.9.2)](https://photon.zhenyapav.com) | 🇮🇸 Iceland   | [zhenyapav@zhenyapav.com](mailto:zhenyapav@zhenyapav.com)                             |
 | [~~ph.buckodr.ink~~ (Has not updated since v1.21.1)](https://ph.buckodr.ink)            | 🇺🇸 US East   | [admin@buckodr.ink](mailto:admin@buckodr.ink)                                         |
 | [phtn.ngn.tf](https://phtn.ngn.tf)                                                      | 🇹🇷 Turkey    | [services@ngn.tf](mailto:services@ngn.tf)                                             |
+| [lm.sudovanilla.org](https://lm.sudovanilla.org)                                        | 🇺🇸 US East   | [hello@sudovanilla.org](mailto:hello@sudovanilla.org)                                 |
 
 ## Donate
 

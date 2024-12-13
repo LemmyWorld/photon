@@ -8,7 +8,7 @@ import {
 import { resumables, type ResumableItem } from '$lib/lemmy/item'
 import { userSettings } from '$lib/settings'
 import { t } from '$lib/translations'
-import { colorScheme } from '$lib/ui/colors'
+import { colorScheme, theme, themeData, type ThemeData } from '$lib/ui/colors'
 import { fullCommunityName } from '$lib/util'
 import {
   ArrowRightOnRectangle,
@@ -42,6 +42,8 @@ import {
   ArrowTrendingDown,
   ChatBubbleOvalLeftEllipsis,
   ChatBubbleLeftRight,
+  Swatch,
+  Plus,
 } from 'svelte-hero-icons'
 import { get } from 'svelte/store'
 
@@ -64,7 +66,9 @@ export interface Action {
 export function getGroups(
   resumables: ResumableItem[],
   profile: Profile,
-  profiles: Profile[]
+  profiles: Profile[],
+  td: ThemeData,
+  contextual?: Action[]
 ) {
   return [
     {
@@ -74,6 +78,10 @@ export function getGroups(
         icon: r.avatar ?? PencilSquare,
         href: r.url,
       })),
+    },
+    {
+      name: t.get('nav.commands.contextual'),
+      actions: contextual ?? [],
     },
     {
       name: t.get('nav.commands.main'),
@@ -252,6 +260,26 @@ export function getGroups(
               name: t.get('account.accounts'),
               icon: UserGroup,
             },
+            {
+              href: '/login',
+              name: t.get('account.login'),
+              icon: ArrowRightOnRectangle,
+            },
+            {
+              href: '/signup',
+              name: t.get('account.signup'),
+              icon: Identification,
+            },
+            {
+              href: '/login/guest',
+              name: t.get('account.addGuest'),
+              icon: Plus,
+            },
+            {
+              href: '/accounts',
+              name: t.get('account.accounts'),
+              icon: UserGroup,
+            },
           ]
         : [
             {
@@ -263,6 +291,11 @@ export function getGroups(
               href: '/signup',
               name: t.get('account.signup'),
               icon: Identification,
+            },
+            {
+              href: '/login/guest',
+              name: t.get('account.addGuest'),
+              icon: Plus,
             },
             {
               href: '/accounts',
@@ -372,6 +405,19 @@ export function getGroups(
               icon: Moon,
             },
           ],
+        },
+        {
+          name: t.get('nav.commands.setTheme'),
+          icon: Swatch,
+          subActions: td.themes.map((th) => ({
+            name: t.get('nav.commands.setThemeTo', { default: th.name }),
+            icon: Swatch,
+            handle: () =>
+              themeData.update((td) => ({
+                ...td,
+                currentTheme: th.id,
+              })),
+          })),
         },
       ],
     },

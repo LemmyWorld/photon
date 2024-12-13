@@ -15,12 +15,12 @@
   
   "
   style="{pageHeader
-    ? `margin-top: min(-1.5rem, calc(-1 * calc(${$contentPadding.top}px))); padding-top: max(1.5rem, calc(${$contentPadding.top}px));`
-    : ''};
+    ? `margin-top: min(-6rem, calc(-1 * calc(${$contentPadding.top}px))); padding-top: max(6rem, calc(${$contentPadding.top}px));`
+    : ''} {$$props.style};
 "
 >
   <h1
-    class="text-3xl font-bold flex items-center gap-2 w-full
+    class="text-3xl font-medium flex gap-2 w-full
   {$userSettings.font == 'satoshi/nunito'
       ? 'font-display'
       : ''} {$$props.class ?? ''}"

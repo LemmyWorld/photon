@@ -5,6 +5,7 @@
     ArrowUturnLeft,
     Bookmark,
     BookmarkSlash,
+    ChatBubbleOvalLeft,
     EllipsisHorizontal,
     Flag,
     Icon,
@@ -43,7 +44,10 @@
   <Translation bind:open={translating} />
 {/if}
 
-<div class="flex flex-row items-center gap-0.5 h-7">
+<div
+  class="flex flex-row items-center gap-0.5 h-7 w-full"
+  class:flex-row-reverse={$userSettings.posts.reverseActions}
+>
   <CommentVote
     bind:upvotes={comment.counts.upvotes}
     bind:downvotes={comment.counts.downvotes}
@@ -53,11 +57,12 @@
   <Button
     size="sm"
     color="tertiary"
-    class="text-slate-600 dark:text-zinc-400"
+    rounding="pill"
+    class="text-slate-700 dark:text-zinc-300"
     on:click={() => (replying = !replying)}
     disabled={comment.post.locked || disabled}
   >
-    <Icon src={ArrowUturnLeft} width={14} height={14} mini />
+    <Icon src={ChatBubbleOvalLeft} size="14" micro />
     <span class="text-xs">{$t('comment.reply')}</span>
   </Button>
   {#if $profile?.user && (amMod($profile?.user, comment.community) || isAdmin($profile.user))}
@@ -66,9 +71,11 @@
   <Menu placement="bottom">
     <Button
       slot="target"
-      class="!p-1 text-slate-600 dark:text-zinc-400"
       title={$t('comment.actions.label')}
       color="tertiary"
+      rounding="pill"
+      size="square-sm"
+      class="text-slate-700 dark:text-zinc-300"
     >
       <Icon
         src={EllipsisHorizontal}
@@ -147,4 +154,5 @@
       {/if}
     {/if}
   </Menu>
+  <div class="flex-1 w-full" />
 </div>

@@ -11,6 +11,7 @@
   import { Badge, Button } from 'mono-svelte'
   import {
     ArchiveBox,
+    ChevronDoubleUp,
     ExclamationTriangle,
     Icon,
     Minus,
@@ -36,6 +37,7 @@
   import { t } from '$lib/translations'
   import InfiniteScroll from 'svelte-infinite-scroll'
   import type { Readable } from 'svelte/motion'
+  import EndPlaceholder from '$lib/components/ui/EndPlaceholder.svelte'
 
   export let posts: PostView[]
   export let community: boolean = false
@@ -47,12 +49,16 @@
   const virtualizer = createWindowVirtualizer({
     count: posts.length,
     estimateSize: () => 150,
+    overscan: 5,
+    measureElement: (element, entry, instance) => {
+      return element.scrollHeight
+    },
   })
 
   $: items = $virtualizer.getVirtualItems()
-  $: {
-    if (virtualItemEls.length)
-      virtualItemEls.forEach((el) => $virtualizer.measureElement(el))
+
+  $: if (virtualItemEls.length) {
+    virtualItemEls.forEach($virtualizer.measureElement)
   }
 
   $: if (posts.length && virtualListEl)
@@ -177,18 +183,12 @@
   })
 </script>
 
+<!-- <svelte:window on:keydown={handleKeydown} /> -->
+
 <ul
   class="flex flex-col list-none {$userSettings.view == 'card'
     ? 'gap-3 md:gap-4'
     : 'divide-y'} divide-slate-200 dark:divide-zinc-800"
-  style={$userSettings.leftAlign
-    ? `--template-areas: 
-'media meta'
-'media title'
-'media body'
-'embed embed'
-'actions actions'; --template-columns: auto 1fr;`
-    : ``}
 >
   {#if posts?.length == 0}
     <div class="h-full grid place-items-center">
@@ -214,17 +214,20 @@
         style="position: absolute; top: 0; left: 0; width: 100%; transform: translateY({items?.[0]
           ? items?.[0]?.start - $virtualizer.options.scrollMargin
           : 0}px);"
-        class="divide-y divide-slate-200 dark:divide-zinc-800"
+        class="divide-y divide-slate-200 dark:divide-zinc-900"
         id="feed"
       >
-        {#each items as row, index (row.index)}
-          <li
-            bind:this={virtualItemEls[index]}
-            data-index={row.index}
-            class="relative post-container"
-	    in:fly={{ y: -16, easing: expoOut, duration: 500, opacity: 0 }}
-          >
-            {#if posts[row.index]}
+        {#each items as row, index (posts[row.index]?.post.id)}
+          {#if posts[row.index]}
+            {@const post = posts?.[row.index]}
+            <li
+              bind:this={virtualItemEls[index]}
+              data-index={row.index}
+              style={row.index < 7 ? `--anim-delay: ${index * 100}ms` : ''}
+              class="relative post-container {row.index < 7
+                ? 'pop-in opacity-0'
+                : ''} -mx-4 sm:-mx-6 px-4 sm:px-6"
+            >
               <Post
                 hideCommunity={community}
                 view={(posts[row.index]?.post.featured_community ||
@@ -232,14 +235,14 @@
                 $userSettings.posts.compactFeatured
                   ? 'compact'
                   : $userSettings.view}
-                post={posts?.[row.index]}
+                {post}
                 class="transition-all duration-250"
                 on:hide={() => {
                   posts = posts.toSpliced(row.index, 1)
                 }}
               ></Post>
-            {/if}
-          </li>
+            </li>
+          {/if}
         {/each}
       </div>
     </div>
@@ -274,6 +277,19 @@
           <div class="w-24 h-8"></div>
         </div>
       </div>
+    {:else}
+      <div style="border-top-width: 0">
+        <EndPlaceholder>
+          {$t('routes.frontpage.endFeed', {
+            // @ts-ignore
+            community_name: feedData.community_name ?? 'undefined',
+          })}
+          <Button slot="action" color="tertiary">
+            <Icon src={ChevronDoubleUp} size="16" micro slot="prefix" />
+            {$t('routes.post.scrollToTop')}
+          </Button>
+        </EndPlaceholder>
+      </div>
     {/if}
     <InfiniteScroll window threshold={1000} on:loadMore={loadMore} />
   {/if}
@@ -287,7 +303,7 @@
 
   @keyframes popIn {
     from {
-      transform: translateY(-24px);
+      transform: translateY(24px);
       opacity: 0;
     }
     to {
@@ -297,6 +313,7 @@
   }
 
   .pop-in {
-    animation: popIn 500ms cubic-bezier(0.075, 0.82, 0.165, 1) forwards;
+    animation: popIn 0.8s cubic-bezier(0.165, 0.84, 0.44, 1) forwards
+      var(--anim-delay);
   }
 </style>

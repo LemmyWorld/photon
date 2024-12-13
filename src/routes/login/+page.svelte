@@ -20,6 +20,14 @@
   import { MINIMUM_VERSION } from '$lib/version.js'
   import { t } from '$lib/translations'
   import Header from '$lib/components/ui/layout/pages/Header.svelte'
+  import { errorMessage } from '$lib/lemmy/error'
+  import ErrorContainer, {
+    clearErrorScope,
+    pushError,
+  } from '$lib/components/error/ErrorContainer.svelte'
+  import { page } from '$app/stores'
+
+  export let ref: string = '/'
 
   let data = {
     instance: DEFAULT_INSTANCE_URL,
@@ -27,10 +35,12 @@
     password: '',
     totp: '',
     loading: false,
+    attempts: 0,
   }
 
   async function logIn() {
     data.loading = true
+    clearErrorScope($page.route.id)
 
     try {
       data.instance = data.instance.trim()
@@ -49,28 +59,39 @@
 
         if (result) {
           toast({ content: $t('toast.logIn'), type: 'success' })
-          goto('/')
+          goto(ref)
         }
       } else {
         throw new Error('Invalid credentials')
       }
     } catch (error) {
-      toast({
-        content: error as any,
-        type: 'error',
+      pushError({
+        message:
+          JSON.parse((error as any)?.body?.message ?? '{}')?.error ==
+          'incorrect_login'
+            ? errorMessage(
+                'incorrect_login' +
+                  (data.attempts == 0 || data.attempts >= 12
+                    ? ''
+                    : `_${data.attempts + 1}`)
+              )
+            : errorMessage(error),
+        scope: $page.route.id!,
       })
+      data.attempts++
     }
     data.loading = false
   }
 </script>
 
 <svelte:head>
-  <title>Login</title>
+  <title>{$t('account.login')}</title>
 </svelte:head>
 
 <div class="max-w-xl w-full mx-auto h-max my-auto">
   <form on:submit|preventDefault={logIn} class="flex flex-col gap-5">
-    <div class="flex flex-col gap-2">
+    <div class="flex flex-col">
+      <slot />
       <Header>{$t('account.login')}</Header>
       {#if $site && mayBeIncompatible(MINIMUM_VERSION, $site.version.replace('v', ''))}
         <Note>
@@ -80,6 +101,7 @@
           })}
         </Note>
       {/if}
+      <ErrorContainer class="pt-2" scope={$page.route.id} />
     </div>
     <div class="flex flex-row w-full items-center gap-2">
       <TextInput
@@ -135,18 +157,18 @@
     >
       {$t('account.login')}
     </Button>
-    <hr class="dark:border-zinc-700" />
-    <div class="flex flex-row items-center gap-2">
-      <Button color="tertiary" href="/signup">
+    <hr class="border-slate-200 dark:border-zinc-800" />
+    <div class="flex flex-row items-center gap-2 overflow-auto *:flex-shrink-0">
+      <Button rounding="pill" color="ghost" href="/signup">
         <Icon src={Identification} mini size="16" />
         {$t('account.signup')}
       </Button>
-      <Button color="tertiary" href="/login_reset">
+      <Button rounding="pill" color="ghost" href="/login_reset">
         <Icon src={QuestionMarkCircle} mini size="16" />
         {$t('form.forgotpassword')}
       </Button>
       {#if !LINKED_INSTANCE_URL}
-        <Button color="tertiary" href="/login/guest">
+        <Button rounding="pill" color="ghost" href="/login/guest">
           <Icon src={UserCircle} mini size="16" />
           {$t('account.guest')}
         </Button>

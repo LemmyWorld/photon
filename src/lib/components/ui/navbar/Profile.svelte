@@ -36,6 +36,7 @@
   import { site } from '$lib/lemmy'
   import SiteCard from '$lib/components/lemmy/SiteCard.svelte'
   import { t } from '$lib/translations'
+  import UserLink from '$lib/components/lemmy/user/UserLink.svelte'
 
   let showInstance = false
 </script>
@@ -57,19 +58,19 @@
 
 <Menu {...$$restProps}>
   <button
-    class="w-10 h-10 rounded-full ring-1 ring-slate-200 dark:ring-zinc-700
+    class="w-10 h-10 rounded-full border-2 border-slate-200 dark:border-zinc-700
     transition-all bg-slate-50 dark:bg-zinc-900 relative
-    hover:dark:brightness-125 hover:brightness {$$props.buttonClass}"
+    hover:border-primary-900 hover:dark:border-primary-100 active:scale-95 {$$props.buttonClass}"
     title={$t('profile.profile')}
     slot="target"
   >
     {#if $profile?.user}
       <div
-        class="w-10 h-10 aspect-square object-cover rounded-full grid place-items-center"
+        class="w-full h-full aspect-square object-cover rounded-full grid place-items-center"
       >
         <Avatar
           url={$profile.user.local_user_view.person.avatar}
-          width={38}
+          width={36}
           alt={$profile.user.local_user_view.person.name}
         />
       </div>
@@ -80,29 +81,29 @@
       {/if}
     {:else}
       <div class="w-full h-full grid place-items-center">
-        <Icon src={Bars3} mini size="18" />
+        <Icon src={Bars3} micro size="18" />
       </div>
     {/if}
   </button>
   {#if $profile?.user}
-    <div class="flex flex-row gap-2 items-center py-2 mx-2 font-medium">
-      <Avatar
-        width={22}
-        url={$profile?.user?.local_user_view.person.avatar}
-        alt={$profile?.username}
-      />
-      {$profile?.user?.local_user_view?.person.name}
-    </div>
+    <UserLink
+      user={$profile?.user.local_user_view.person}
+      showInstance={false}
+      avatar
+      avatarSize={24}
+      displayName={false}
+      class="font-medium px-2 py-1 pointer-events-none"
+    />
   {:else}
     <MenuDivider>{$t('nav.menu.label')}</MenuDivider>
   {/if}
   {#if $profile?.jwt}
     <MenuButton link href="/profile">
-      <Icon src={UserCircle} mini width={16} slot="prefix" />
+      <Icon src={UserCircle} micro width={16} slot="prefix" />
       {$t('profile.profile')}
     </MenuButton>
     <MenuButton link href="/inbox">
-      <Icon src={Inbox} mini width={16} slot="prefix" />
+      <Icon src={Inbox} micro width={16} slot="prefix" />
       {$t('profile.inbox')}
       {#if $notifications.inbox > 0}
         <Badge color="red-subtle" class="text-xs ml-auto font-bold !py-0.5">
@@ -111,18 +112,17 @@
       {/if}
     </MenuButton>
     <MenuButton link href="/saved">
-      <Icon src={Bookmark} mini width={16} slot="prefix" />
+      <Icon src={Bookmark} micro width={16} slot="prefix" />
       {$t('profile.saved')}
     </MenuButton>
   {/if}
   <MenuButton link href="/accounts">
-    <Icon src={UserGroup} mini width={16} slot="prefix" />
+    <Icon src={UserGroup} micro width={16} slot="prefix" />
     {$t('account.accounts')}
   </MenuButton>
-  <hr class="dark:opacity-10 w-[90%] my-2 mx-auto" />
   <MenuDivider>{$t('nav.menu.app')}</MenuDivider>
   <MenuButton link href="/settings">
-    <Icon src={Cog6Tooth} mini width={16} slot="prefix" />
+    <Icon src={Cog6Tooth} micro width={16} slot="prefix" />
     {$t('nav.menu.settings')}
   </MenuButton>
   <MenuButton class="!py-0">
@@ -134,7 +134,7 @@
           : $colorScheme == 'dark'
             ? Moon
             : Moon}
-      mini
+      micro
       size="16"
       slot="prefix"
     />
@@ -143,14 +143,23 @@
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div class="contents" on:click|stopPropagation={() => {}}>
       <Select bind:value={$colorScheme} class="ml-auto my-auto w-24" size="sm">
-        <option value="system">{$t('nav.menu.colorscheme.system')}</option>
-        <option value="light">{$t('nav.menu.colorscheme.light')}</option>
-        <option value="dark">{$t('nav.menu.colorscheme.dark')}</option>
+        <option value="system">
+          <Icon src={ComputerDesktop} size="16" micro />
+          {$t('nav.menu.colorscheme.system')}
+        </option>
+        <option value="light">
+          <Icon src={Sun} size="16" micro />
+          {$t('nav.menu.colorscheme.light')}
+        </option>
+        <option value="dark">
+          <Icon src={Moon} size="16" micro />
+          {$t('nav.menu.colorscheme.dark')}
+        </option>
       </Select>
     </div>
   </MenuButton>
   <MenuButton href="/theme">
-    <Icon src={Swatch} size="16" mini slot="prefix" />
+    <Icon src={Swatch} size="16" micro slot="prefix" />
     {$t('nav.menu.theme')}
   </MenuButton>
   {#if $userSettings.debugInfo}
@@ -180,7 +189,7 @@
         title={$t('nav.menu.instance')}
         size="square-md"
       >
-        <Icon src={ServerStack} size="16" mini />
+        <Icon src={ServerStack} size="16" micro />
       </Button>
       <Button
         color="tertiary"
@@ -188,7 +197,7 @@
         title={$t('nav.menu.donate')}
         size="square-md"
       >
-        <Icon src={Heart} size="16" mini />
+        <Icon src={Heart} size="16" micro />
       </Button>
       <Button
         color="tertiary"
@@ -196,7 +205,7 @@
         title={$t('nav.menu.source')}
         size="square-md"
       >
-        <Icon src={CodeBracketSquare} size="16" mini />
+        <Icon src={CodeBracketSquare} size="16" micro />
       </Button>
     </div>
   </li>

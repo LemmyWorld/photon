@@ -19,6 +19,8 @@
   import { userLink } from '$lib/lemmy/generic'
   import { t } from '$lib/translations'
   import Entity from '../ui/Entity.svelte'
+  import { userSettings } from '$lib/settings'
+  import { optimizeImageURL } from './post/helpers'
 
   export let site: SiteView
   export let taglines: Tagline[] | undefined = undefined
@@ -27,6 +29,19 @@
 </script>
 
 <StickyCard class="w-full {$$props.class} text-slate-600 dark:text-zinc-400">
+  {#if site.site.banner}
+    <div
+      class="rounded-xl
+     bg-slate-100 dark:bg-zinc-925"
+    >
+      <img
+        src={optimizeImageURL(site.site.banner, 512)}
+        alt="Site banner"
+        class="h-32 object-cover w-full"
+        style="border-radius: inherit;"
+      />
+    </div>
+  {/if}
   <Entity name={site.site.name} label={new URL(site.site.actor_id).hostname}>
     <Avatar
       width={32}
@@ -64,9 +79,7 @@
     </Button>
   </div>
 
-  <div
-    class="flex flex-col [&>*]:py-3 divide-y divide-slate-200 dark:divide-zinc-800"
-  >
+  <div class="flex flex-col gap-1">
     {#if taglines && taglines.length > 0}
       <Markdown
         class="!pt-0"
@@ -74,21 +87,23 @@
       />
     {/if}
 
-    <Expandable>
-      <svelte:fragment slot="title">
-        <Icon src={InformationCircle} size="15" mini />
+    <hr class="border-slate-200 dark:border-zinc-900 my-1" />
+    <Expandable bind:open={$userSettings.expand.about}>
+      <span class="flex items-center gap-1 py-1 px-2" slot="title">
+        <Icon src={InformationCircle} size="16" mini />
         {$t('cards.site.about')}
-      </svelte:fragment>
+      </span>
       <Markdown source={site.site.description} />
       <div class="my-4" />
       <Markdown source={site.site.sidebar} />
     </Expandable>
 
-    <Expandable>
-      <svelte:fragment slot="title">
-        <Icon src={ChartBar} size="15" mini />
+    <hr class="border-slate-200 dark:border-zinc-900 my-1" />
+    <Expandable bind:open={$userSettings.expand.stats}>
+      <span class="flex items-center gap-1 py-1 px-2" slot="title">
+        <Icon src={ChartBar} size="16" mini />
         {$t('cards.site.stats')}
-      </svelte:fragment>
+      </span>
       <div class="flex flex-row gap-4 flex-wrap">
         <LabelStat
           label={$t('content.users')}
@@ -109,11 +124,12 @@
     </Expandable>
 
     {#if admins}
-      <Expandable>
-        <svelte:fragment slot="title">
-          <Icon src={UserGroup} size="15" mini />
+      <hr class="border-slate-200 dark:border-zinc-900 my-1" />
+      <Expandable bind:open={$userSettings.expand.team}>
+        <span class="flex items-center gap-1 py-1 px-2" slot="title">
+          <Icon src={UserGroup} size="16" mini />
           {$t('cards.site.admins')}
-        </svelte:fragment>
+        </span>
         <ItemList
           items={admins.map((a) => ({
             id: a.person.id,

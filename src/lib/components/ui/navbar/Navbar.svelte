@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { notifications, profile, profileData } from '$lib/auth.js'
-  import Link from '$lib/components/input/Link.svelte'
+  import { notifications, profile } from '$lib/auth.js'
   import ShieldIcon from '$lib/components/lemmy/moderation/ShieldIcon.svelte'
   import {
     amModOfAny,
@@ -29,25 +28,24 @@
   } from 'svelte-hero-icons'
   import Profile from './Profile.svelte'
   import NavButton from './NavButton.svelte'
-  import { fly, scale } from 'svelte/transition'
-  import { expoOut, backOut } from 'svelte/easing'
-  import { flip } from 'svelte/animate'
+  import { scale } from 'svelte/transition'
+  import { backOut } from 'svelte/easing'
   import SearchBar from '$lib/components/lemmy/util/SearchBar.svelte'
-  import { swipeGesture } from '$lib/input/swipe'
   import Logo from '../Logo.svelte'
   import { LINKED_INSTANCE_URL } from '$lib/instance'
-  import SiteCard from '$lib/components/lemmy/SiteCard.svelte'
   import { t } from '$lib/translations'
   import CommandsWrapper from './commands/CommandsWrapper.svelte'
+  import { optimizeImageURL } from '$lib/components/lemmy/post/helpers'
+  import { userSettings } from '$lib/settings'
+  import { dockProps } from '../layout/Shell.svelte'
 
-  let searching = false
   let promptOpen: boolean = false
 </script>
 
 <CommandsWrapper bind:open={promptOpen} />
 <nav
   class="flex flex-row gap-2 items-center w-full mx-auto z-50 box-border p-0.5
-  duration-150
+  duration-150 @container
   {$$props.class}
   "
   style={$$props.style}
@@ -61,6 +59,7 @@
     href="/"
     label={$t('nav.home')}
     class="ml-2 logo"
+    adaptive={false}
   >
     <svelte:fragment slot="icon">
       {#if LINKED_INSTANCE_URL}
@@ -79,41 +78,9 @@
       {/if}
     </svelte:fragment>
   </NavButton>
-  {#if searching}
-    <div
-      class="w-full h-full absolute z-20 p-2 flex items-center gap-2 bg-white dark:bg-zinc-950
-      rounded-full"
-      transition:scale={{
-        start: 0.96,
-        duration: 250,
-        easing: backOut,
-      }}
-    >
-      <Button
-        size="custom"
-        rounding="pill"
-        class="w-11 h-11 flex-shrink-0"
-        on:click={() => (searching = false)}
-      >
-        <Icon src={XMark} size="18" mini />
-      </Button>
-      <SearchBar let:search let:loading class="!rounded-full z-20">
-        <Button
-          size="custom"
-          rounding="pill"
-          class="w-11 h-11 flex-shrink-0"
-          on:click={search}
-          color="primary"
-          type="submit"
-          {loading}
-        >
-          <Icon src={MagnifyingGlass} size="18" mini slot="prefix" />
-        </Button>
-      </SearchBar>
-    </div>
-  {/if}
   <div
-    class="flex flex-row gap-2 py-2 px-2 items-center w-full rounded-full overflow-auto"
+    class="flex flex-row gap-2 py-2 px-2 items-center w-full overflow-auto"
+    style="border-radius: inherit;"
   >
     <div class="ml-auto" />
     {#if $profile?.user && isAdmin($profile.user)}
@@ -142,7 +109,13 @@
             class="rounded-full w-2 h-2 bg-red-500 absolute -top-1 -left-1"
           />
         {/if}
-        <ShieldIcon let:isSelected slot="icon" filled={isSelected} width={18} />
+        <ShieldIcon
+          let:size
+          let:isSelected
+          slot="icon"
+          filled={isSelected}
+          width={size}
+        />
       </NavButton>
     {/if}
     <NavButton
@@ -150,11 +123,7 @@
       label={$t('nav.communities')}
       icon={GlobeAlt}
     />
-    <NavButton
-      on:click={() => (searching = true)}
-      label={$t('nav.search')}
-      icon={MagnifyingGlass}
-    />
+    <NavButton href="/search" label={$t('nav.search')} icon={MagnifyingGlass} />
     <Menu placement="top">
       <NavButton
         class="relative"
@@ -165,7 +134,7 @@
       />
       <MenuDivider>{$t('nav.create.label')}</MenuDivider>
       <MenuButton link href="/create/post" disabled={!$profile?.jwt}>
-        <Icon src={PencilSquare} mini width={16} slot="prefix" />
+        <Icon src={PencilSquare} size="16" micro slot="prefix" />
         {$t('nav.create.post')}
       </MenuButton>
       <MenuButton
@@ -176,7 +145,7 @@
           ($site?.site_view.local_site.community_creation_admin_only &&
             !isAdmin($profile.user))}
       >
-        <Icon src={Newspaper} mini width={16} slot="prefix" />
+        <Icon src={Newspaper} size="16" micro slot="prefix" />
         {$t('nav.create.community')}
       </MenuButton>
       {#if !$profile?.jwt}
@@ -185,12 +154,22 @@
         </span>
       {/if}
     </Menu>
-    <Profile
-      placement="top"
-      itemsClass="h-8 md:h-8 z-10"
-      targetClass="z-10 h-10"
-      containerClass="!max-h-[28rem] z-10"
-      buttonClass=""
-    />
+    {#if $profile?.user?.local_user_view.person.avatar && !$dockProps.noGap}
+      <div
+        class="absolute right-0 -z-10 h-full
+       overflow-hidden w-full ml-auto"
+        style="border-radius: inherit;"
+      >
+        <img
+          src={optimizeImageURL(
+            $profile?.user?.local_user_view.person.avatar ?? '',
+            32
+          )}
+          class="blur-2xl -z-10 object-cover w-48 h-48 opacity-20 dark:opacity-50 ml-auto"
+          alt=""
+        />
+      </div>
+    {/if}
+    <Profile placement="top" />
   </div>
 </nav>

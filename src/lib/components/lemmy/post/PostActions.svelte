@@ -3,26 +3,30 @@
   import PostVote from './PostVote.svelte'
   import { getInstance, site } from '$lib/lemmy.js'
   import {
+    ArrowsUpDown,
     ArrowTopRightOnSquare,
     Bookmark,
     BookmarkSlash,
     BugAnt,
+    ChatBubbleLeftEllipsis,
     ChatBubbleOvalLeft,
     ChatBubbleOvalLeftEllipsis,
     CheckBadge,
+    Clock,
     EllipsisHorizontal,
     Eye,
     EyeSlash,
     Flag,
-    GlobeAlt,
-    Home,
+    GlobeAmericas,
     Icon,
     Language,
+    MapPin,
     Newspaper,
+    Pencil,
     PencilSquare,
-    Scale,
     ServerStack,
     Share,
+    Star,
     Trash,
     UserCircle,
     XMark,
@@ -36,12 +40,7 @@
   } from '$lib/components/lemmy/moderation/moderation.js'
   import ModerationMenu from '$lib/components/lemmy/moderation/ModerationMenu.svelte'
   import { profile } from '$lib/auth.js'
-  import {
-    contentView,
-    deleteItem,
-    markAsRead,
-    save,
-  } from '$lib/lemmy/contentview.js'
+  import { deleteItem, markAsRead, save } from '$lib/lemmy/contentview.js'
   import { setSessionStorage } from '$lib/session.js'
   import { goto } from '$app/navigation'
   import { userSettings, type View } from '$lib/settings.js'
@@ -55,17 +54,20 @@
     toast,
   } from 'mono-svelte'
   import { fediseer, type Data } from '$lib/fediseer/fediseer'
-  import Fediseer from '$lib/fediseer/Fediseer.svelte'
   import { t } from '$lib/translations'
   import { text } from '$lib/components/translate/translation'
-  import Translation from '$lib/components/translate/Translation.svelte'
-  import { hidePost, postLink, type MediaType } from './helpers'
+  import { hidePost, postLink } from './helpers'
   import { feature } from '$lib/version'
   import Switch from '$lib/components/input/Switch.svelte'
-  import { instanceToURL } from '$lib/util'
+  import { instanceId, instanceToURL } from '$lib/util'
+  import { publishedToDate } from '$lib/components/util/date'
+  import TextProps from '$lib/components/ui/text/TextProps.svelte'
+  import { communityLink, userLink } from '$lib/lemmy/generic'
+  import RelativeDate, {
+    formatRelativeDate,
+  } from '$lib/components/util/RelativeDate.svelte'
 
   export let post: PostView
-  export let type: MediaType | undefined = undefined
   export let view: View = 'cozy'
   export let debug: boolean = false
 
@@ -74,31 +76,18 @@
   let editing = false
   let saving = false
 
-  let fediseerOpen = false
-  let fediseerData: Data | null = null
-  let fediseerLoading = false
-
   let translating = false
 
   let localShare = false
 
-  let mediaBias = false
-
-  const stripSubdomain = (url: string) =>
-    new URL(url).hostname.split('.').slice(-2).join('.')
-
-  $: buttonHeight = view == 'compact' ? 'h-[30px]' : 'h-8'
-  $: buttonSquare = view == 'compact' ? 'w-[30px] h-[30px]' : 'w-8 h-8'
+  $: buttonHeight = view == 'compact' ? 'h-7' : 'h-8'
+  $: buttonSquare = view == 'compact' ? 'w-7 h-7' : 'w-8 h-8'
 </script>
-
-{#if fediseerData}
-  <Fediseer bind:open={fediseerOpen} data={fediseerData} />
-{/if}
 
 {#if editing}
   <Modal bind:open={editing}>
     <h1 slot="title" class="text-2xl font-bold">Editing post</h1>
-    {#await import('./PostForm.svelte')}
+    {#await import('./form/PostForm.svelte')}
       <div class="mx-auto h-96 flex justify-center items-center">
         <Spinner width={32} />
       </div>
@@ -127,14 +116,9 @@
   {/await}
 {/if}
 
-{#if mediaBias && post.post.url}
-  {#await import('$lib/components/mbfc/MBFCModal.svelte') then { default: MbfcModal }}
-    <MbfcModal domain={stripSubdomain(post.post.url)} bind:open={mediaBias} />
-  {/await}
-{/if}
-
-<div
+<footer
   class="flex flex-row gap-2 items-center flex-shrink-0 {buttonHeight}"
+  class:flex-row-reverse={$userSettings.posts.reverseActions}
   style={$$props.style ?? ''}
 >
   <PostVote
@@ -143,21 +127,30 @@
     bind:score={post.counts.score}
     bind:upvotes={post.counts.upvotes}
     bind:downvotes={post.counts.downvotes}
+    showCounts={$profile?.user?.local_user_view?.local_user?.show_scores ??
+      true}
   />
 
   <Button
-    size="sm"
-    href="/post/{getInstance()}/{post.post.id}"
-    class="!text-inherit h-full px-3"
+    size="custom"
+    href="{postLink(post.post)}#comments"
+    class="!text-inherit h-full px-3 relative"
     color="ghost"
     rounding="pill"
     target={$userSettings.openLinksInNewTab ? '_blank' : ''}
     title={$t('post.actions.comments')}
+    animations={{ scale: true, large: false }}
   >
-    <Icon slot="prefix" src={ChatBubbleOvalLeft} size="18" />
+    {@const newComment =
+      publishedToDate(post.counts.newest_comment_time).getTime() >
+      new Date().getTime() - 5 * 60 * 1000}
+    <Icon
+      src={newComment ? ChatBubbleOvalLeftEllipsis : ChatBubbleOvalLeft}
+      size="18"
+    />
     <FormattedNumber number={post.counts.comments} />
   </Button>
-  <div class="ml-auto" />
+  <div class="flex-1" />
 
   {#if $userSettings.debugInfo}
     {#if debug}
@@ -172,8 +165,9 @@
       color="ghost"
       rounding="pill"
       class={buttonSquare}
+      animations={{ scale: true, large: true }}
     >
-      <Icon src={BugAnt} mini size="16" slot="prefix" />
+      <Icon src={BugAnt} micro size="16" slot="prefix" />
     </Button>
   {/if}
   {#if $profile?.user && (amMod($profile.user, post.community) || isAdmin($profile.user))}
@@ -202,6 +196,7 @@
       loading={saving}
       disabled={saving}
       title={post.saved ? $t('post.actions.unsave') : $t('post.actions.save')}
+      animations={{ scale: true, large: true }}
     >
       <Icon
         src={post.saved ? BookmarkSlash : Bookmark}
@@ -226,55 +221,88 @@
       rounding="pill"
       size="custom"
       class={buttonSquare}
+      animations={{ scale: true, large: true }}
     >
-      <Icon slot="prefix" src={EllipsisHorizontal} width={16} mini />
+      <Icon slot="prefix" src={EllipsisHorizontal} width={16} micro />
     </Button>
+    <MenuDivider>{$t('cards.site.stats')}</MenuDivider>
+    <div class="flex flex-row gap-1 items-center">
+      <MenuButton class="flex-1">
+        <Icon src={Clock} size="16" micro slot="prefix" />
+        <span>
+          {publishedToDate(post.post.published).toLocaleDateString(undefined, {
+            dateStyle: 'short',
+          })}
+        </span>
+      </MenuButton>
+      {#if post.post.updated}
+        {@const editedTime = formatRelativeDate(
+          publishedToDate(post.post.updated),
+          {
+            style: 'long',
+          }
+        )}
+        <MenuButton class="flex-1" aria-label={editedTime}>
+          <Icon src={Pencil} size="16" micro slot="prefix" />
+          <RelativeDate date={publishedToDate(post.post.updated)} />
+        </MenuButton>
+      {/if}
+    </div>
+    {#if post.counts.score}
+      {@const ratio =
+        post.counts.upvotes / (post.counts.upvotes + post.counts.downvotes)}
+      <MenuButton
+        aria-label={$t('aria.vote.score', { default: post.counts.score })}
+      >
+        <Icon src={ArrowsUpDown} size="16" micro slot="prefix" />
+        {$t('post.actions.vote.score')}
+        •
+        <FormattedNumber
+          number={post.counts.score}
+          options={{ notation: 'standard' }}
+          class="font-medium"
+        />
+        •
+        <FormattedNumber
+          number={ratio}
+          options={{ style: 'percent' }}
+          class="font-medium {ratio > 0.7
+            ? 'text-blue-700 dark:text-blue-300'
+            : 'text-red-500'}"
+        />
+      </MenuButton>
+    {/if}
     <MenuDivider>{$t('post.actions.more.creator')}</MenuDivider>
-    <MenuButton
-      link
-      href="/u/{post.creator.name}@{new URL(post.creator.actor_id).hostname}"
-    >
-      <Icon src={UserCircle} width={16} mini slot="prefix" />
-      <span>{post.creator.name}</span>
+    <MenuButton link href={userLink(post.creator)}>
+      <Icon
+        src={UserCircle}
+        size="16"
+        micro
+        slot="prefix"
+        class="flex-shrink-0"
+      />
+      <TextProps wrap="no-wrap">
+        {post.creator.name}
+      </TextProps>
     </MenuButton>
-    <MenuButton
-      link
-      href="/c/{post.community.name}@{new URL(post.community.actor_id)
-        .hostname}"
-    >
-      <Icon src={Newspaper} width={16} mini slot="prefix" />
-      <span>{post.community.title}</span>
+    <MenuButton link href={communityLink(post.community)}>
+      <Icon
+        src={Newspaper}
+        size="16"
+        micro
+        slot="prefix"
+        class="flex-shrink-0"
+      />
+      <TextProps wrap="no-wrap">
+        {post.community.title}
+      </TextProps>
     </MenuButton>
-    <MenuButton
-      loading={fediseerLoading}
-      on:click={async (e) => {
-        e.stopImmediatePropagation()
-
-        fediseerLoading = true
-        const data = await fediseer.getInstanceInfo(
-          new URL(post.community.actor_id).hostname
-        )
-        fediseerData = data
-        fediseerOpen = true
-        fediseerLoading = false
-
-        return
-      }}
-    >
-      <svelte:fragment slot="prefix">
-        {#if fediseerLoading}
-          <Spinner width={14} />
-        {:else}
-          <Icon src={ServerStack} width={16} mini />
-        {/if}
-      </svelte:fragment>
-      <span>{new URL(post.community.actor_id).hostname}</span>
-    </MenuButton>
-    <hr class="w-[90%] mx-auto opacity-100 dark:opacity-10 my-2" />
-    <MenuDivider>{$t('post.actions.more.actions')}</MenuDivider>
+    <MenuDivider>
+      {$t('post.actions.more.actions')}
+    </MenuDivider>
     {#if $profile?.user && $profile?.jwt && $profile.user.local_user_view.person.id == post.creator.id}
       <MenuButton on:click={() => (editing = true)}>
-        <Icon src={PencilSquare} width={16} mini slot="prefix" />
+        <Icon src={PencilSquare} size="16" micro slot="prefix" />
         {$t('post.actions.more.edit')}
       </MenuButton>
     {/if}
@@ -285,16 +313,10 @@
             post.read = await markAsRead(post.post, !post.read, $profile.jwt)
         }}
       >
-        <Icon slot="prefix" src={post.read ? EyeSlash : Eye} width={16} mini />
+        <Icon slot="prefix" src={post.read ? EyeSlash : Eye} size="16" micro />
         {post.read
           ? $t('post.actions.more.markUnread')
           : $t('post.actions.more.markRead')}
-      </MenuButton>
-    {/if}
-    {#if post.post.url && type == 'embed'}
-      <MenuButton on:click={() => (mediaBias = !mediaBias)}>
-        <Icon src={CheckBadge} micro size="16" slot="prefix" />
-        {$t('post.actions.more.mediaBias')}
       </MenuButton>
     {/if}
     <MenuButton
@@ -313,19 +335,30 @@
       }}
       class="flex-1 !py-0"
     >
-      <Icon src={Share} width={16} mini slot="prefix" />
+      <Icon src={Share} size="16" micro slot="prefix" />
       {$t('post.actions.more.share')}
+      <div class="flex-1" />
       {#if !post.post.local}
-        <Switch
-          optionNames={[
-            $t('filter.location.global'),
-            $t('filter.location.local'),
-          ]}
-          options={[false, true]}
-          bind:selected={localShare}
-          class="ml-auto"
-          buttonClass="!py-1"
-        />
+        <div class="flex">
+          <Button
+            color={!localShare ? 'primary' : 'secondary'}
+            size="square-md"
+            roundingSide="left"
+            on:click={() => (localShare = false)}
+            title={$t('filter.location.global')}
+          >
+            <Icon src={GlobeAmericas} size="16" micro />
+          </Button>
+          <Button
+            color={localShare ? 'primary' : 'secondary'}
+            size="square-md"
+            roundingSide="right"
+            on:click={() => (localShare = true)}
+            title={$t('filter.location.local')}
+          >
+            <Icon src={MapPin} size="16" micro />
+          </Button>
+        </div>
       {/if}
     </MenuButton>
     {#if post.post.body && $userSettings.translator}
@@ -336,7 +369,7 @@
           translating = !translating
         }}
       >
-        <Icon src={Language} size="16" mini slot="prefix" />
+        <Icon src={Language} size="16" micro slot="prefix" />
         {$t('post.actions.more.translate')}
       </MenuButton>
     {/if}
@@ -364,7 +397,7 @@
           goto('/create/post?crosspost=true')
         }}
       >
-        <Icon src={ArrowTopRightOnSquare} width={16} mini slot="prefix" />
+        <Icon src={ArrowTopRightOnSquare} size="16" micro slot="prefix" />
         {$t('post.actions.more.crosspost')}
       </MenuButton>
       {#if $profile.user && post.creator.id == $profile.user.local_user_view.person.id}
@@ -379,7 +412,7 @@
           }}
           color="danger-subtle"
         >
-          <Icon src={Trash} width={16} mini slot="prefix" />
+          <Icon src={Trash} size="16" micro slot="prefix" />
           {post.post.deleted
             ? $t('post.actions.more.restore')
             : $t('post.actions.more.delete')}
@@ -402,17 +435,17 @@
             }}
             color="danger-subtle"
           >
-            <Icon slot="prefix" src={XMark} size="16" mini />
+            <Icon slot="prefix" src={XMark} size="16" micro />
             {post.hidden
               ? $t('post.actions.more.unhide')
               : $t('post.actions.more.hide')}
           </MenuButton>
         {/if}
         <MenuButton on:click={() => report(post)} color="danger-subtle">
-          <Icon src={Flag} width={16} mini slot="prefix" />
+          <Icon src={Flag} width={16} micro slot="prefix" />
           {$t('moderation.report')}
         </MenuButton>
       {/if}
     {/if}
   </Menu>
-</div>
+</footer>

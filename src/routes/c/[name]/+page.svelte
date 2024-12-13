@@ -24,15 +24,12 @@
     XMark,
   } from 'svelte-hero-icons'
   import Placeholder from '$lib/components/ui/Placeholder.svelte'
-  import { profile } from '$lib/auth'
   import { t } from '$lib/translations.js'
   import { userSettings } from '$lib/settings.js'
   import { site } from '$lib/lemmy.js'
-  import { postFeeds } from '$lib/lemmy/postfeed.js'
-  import EntityHeader from '$lib/components/ui/EntityHeader.svelte'
-  import CommunityLink from '$lib/components/lemmy/community/CommunityLink.svelte'
-  import Subscribe from '../../communities/Subscribe.svelte'
   import { resumables } from '$lib/lemmy/item'
+  import CommunityHeader from '$lib/components/lemmy/community/CommunityHeader.svelte'
+  import Header from '$lib/components/ui/layout/pages/Header.svelte'
 
   export let data
 
@@ -77,101 +74,17 @@
 {/if}
 
 <div class="flex flex-col gap-4 max-w-full w-full min-w-0">
-  <EntityHeader
-    banner={community.community.banner}
-    avatar={community.community.icon}
-    name={community.community.title}
-    stats={[
-      {
-        name: $t('cards.community.members'),
-        value: community.counts.subscribers.toString(),
-      },
-      {
-        name: $t('content.posts'),
-        value: community.counts.posts.toString(),
-      },
-      {
-        name: $t('cards.community.activeDay'),
-        value: community.counts.users_active_day.toString(),
-      },
-    ]}
-  >
-    <button
-      on:click={() => {
-        navigator?.clipboard?.writeText?.(
-          `!${fullCommunityName(
-            community.community.name,
-            community.community.actor_id
-          )}`
-        )
-        toast({ content: $t('toast.copied') })
-      }}
-      class="text-sm flex gap-0 items-center"
-      slot="nameDetail"
-    >
-      !{fullCommunityName(
-        community.community.name,
-        community.community.actor_id
-      )}
-    </button>
-    <div class="flex items-center gap-2" slot="actions">
-      {#if $profile?.jwt}
-        <Subscribe let:subscribe bind:community let:subscribing>
-          <Button
-            disabled={subscribing}
-            loading={subscribing}
-            size="md"
-            color={community.subscribed == 'NotSubscribed'
-              ? 'primary'
-              : 'secondary'}
-            on:click={async () => {
-              community.subscribed =
-                (await subscribe())?.community_view.subscribed ??
-                'NotSubscribed'
-
-              if ($page.data.slots?.sidebar?.props.community_view)
-                $page.data.slots.sidebar.props.community_view = community
-            }}
-            class="flex-1 relative z-[inherit]"
-          >
-            <Icon
-              src={community.subscribed != 'NotSubscribed' ? Check : Plus}
-              mini
-              size="16"
-              slot="prefix"
-            />
-            {community.subscribed == 'Subscribed' ||
-            community.subscribed == 'Pending'
-              ? $t('cards.community.subscribed')
-              : $t('cards.community.subscribe')}
-          </Button>
-        </Subscribe>
-      {/if}
-
-      {#if $profile?.user && $profile.user.moderates
-          .map((c) => c.community.id)
-          .includes(community.community.id)}
-        <Button
-          size="square-md"
-          color="secondary"
-          href="/c/{fullCommunityName(
-            community.community.name,
-            community.community.actor_id
-          )}/settings"
-        >
-          <Icon src={Cog6Tooth} size="16" mini />
-        </Button>
-      {/if}
-      <Button
-        size="square-md"
-        color="secondary"
-        on:click={() => (sidebar = !sidebar)}
-      >
-        <Icon src={InformationCircle} size="16" mini />
-      </Button>
-    </div>
-  </EntityHeader>
-  <Sort selected={data.sort} />
+  <Header pageHeader>
+    <CommunityHeader
+      bind:community={community.community}
+      bind:subscribed={community.subscribed}
+      bind:blocked={community.blocked}
+      moderators={data.community.moderators}
+      counts={community.counts}
+      class="w-full relative"
+    />
+    <Sort selected={data.sort} slot="extended" />
+  </Header>
   {#if community.blocked}
     <Placeholder
       icon={XMark}
@@ -189,6 +102,7 @@
       posts={data.posts.posts}
       bind:feedData={data}
       feedId="community"
+      community
     />
   {/if}
 

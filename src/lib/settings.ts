@@ -26,6 +26,7 @@ interface Preset {
 }
 
 interface Settings {
+  settingsVer: number
   expandableImages: boolean
   // should have been named "fade" read posts
   markReadPosts: boolean
@@ -51,6 +52,10 @@ interface Settings {
     communities: boolean
     moderates: boolean
     favorites: boolean
+    about: boolean
+    stats: boolean
+    team: boolean
+    accounts: boolean
   }
   displayNames: boolean
   nsfwBlur: boolean
@@ -82,11 +87,14 @@ interface Settings {
     noGap: boolean | null
     top: boolean | null
     pins: Link[]
+    paletteHotkey: string
   }
   posts: {
     deduplicateEmbed: boolean
     compactFeatured: boolean
     showHidden: boolean
+    noVirtualize: boolean
+    reverseActions: boolean
   }
   infiniteScroll: boolean
   language: string | null
@@ -95,11 +103,12 @@ interface Settings {
   parseTags: boolean
   tagRules: {
     [key: string]: 'hide' | 'blur'
-  },
-  downloadMbfc: boolean
+  }
+  logoColorMonth: number | null
 }
 
 export const defaultSettings: Settings = {
+  settingsVer: 3,
   expandableImages: toBool(env.PUBLIC_EXPANDABLE_IMAGES) ?? true,
   markReadPosts: toBool(env.PUBLIC_MARK_READ_POSTS) ?? true,
   showInstances: {
@@ -121,6 +130,10 @@ export const defaultSettings: Settings = {
     communities: toBool(env.PUBLIC_EXPAND_COMMUNITIES) ?? true,
     favorites: toBool(env.PUBLIC_EXPAND_FAVORITES) ?? true,
     moderates: toBool(env.PUBLIC_EXPAND_MODERATES) ?? true,
+    about: false,
+    stats: false,
+    team: false,
+    accounts: true,
   },
   displayNames: toBool(env.PUBLIC_DISPLAY_NAMES) ?? true,
   nsfwBlur: toBool(env.PUBLIC_NSFW_BLUR) ?? true,
@@ -156,11 +169,14 @@ export const defaultSettings: Settings = {
     noGap: toBool(env.PUBLIC_DOCK_PANEL) ?? null,
     top: toBool(env.PUBLIC_DOCK_TOP) ?? null,
     pins: [],
+    paletteHotkey: '/',
   },
   posts: {
     deduplicateEmbed: toBool(env.PUBLIC_DEDUPLICATE_EMBED) ?? true,
     compactFeatured: toBool(env.PUBLIC_COMPACT_FEATURED) ?? true,
     showHidden: false,
+    noVirtualize: false,
+    reverseActions: toBool(env.PUBLIC_REVERSE_ACTIONS) ?? false,
   },
   infiniteScroll: true,
   language: env.PUBLIC_LANGUAGE ?? null,
@@ -172,7 +188,7 @@ export const defaultSettings: Settings = {
     nsfl: 'blur',
     nsfw: 'blur',
   },
-  downloadMbfc: false
+  logoColorMonth: null,
 }
 
 export const userSettings = writable(defaultSettings)
@@ -198,7 +214,11 @@ if (typeof window != 'undefined') {
 
   oldUserSettings = migrate(oldUserSettings)
 
-  userSettings.set({ ...defaultSettings, ...oldUserSettings })
+  userSettings.set({
+    ...defaultSettings,
+    ...oldUserSettings,
+    settingsVer: defaultSettings.settingsVer,
+  })
 }
 
 userSettings.subscribe((settings) => {

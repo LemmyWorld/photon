@@ -15,17 +15,15 @@
 </script>
 
 <Button
-  color="tertiary"
+  color={selected ? 'primary' : 'tertiary'}
   alignment="left"
   {...$$restProps}
   {href}
   on:click
   on:contextmenu
-  class="font-normal {selected
-    ? 'text-primary-900 dark:!text-primary-100'
-    : 'text-slate-600 dark:text-zinc-400'} {$userSettings.expandSidebar
-    ? ''
-    : '//max-lg:!p-1 //[&>*]:max-lg:!justify-center'} {$$props.class}"
+  class="font-normal block !origin-left border border-transparent {!selected
+    ? 'text-slate-600 dark:text-zinc-400'
+    : ''} {$$props.class}"
 >
   <slot {selected} name="icon" slot="prefix">
     {#if icon}
@@ -33,11 +31,7 @@
     {/if}
   </slot>
   <slot />
-  <div
-    class="{$userSettings.expandSidebar
-      ? 'contents'
-      : '//max-lg:hidden'} contents"
-  >
+  <div class="contents">
     <slot name="label" />
   </div>
 </Button>

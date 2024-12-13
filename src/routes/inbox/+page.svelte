@@ -21,6 +21,9 @@
   import EndPlaceholder from '$lib/components/ui/EndPlaceholder.svelte'
   import Header from '$lib/components/ui/layout/pages/Header.svelte'
   import { t } from '$lib/translations'
+  import Tabs from '$lib/components/ui/layout/pages/Tabs.svelte'
+  import { contentPadding } from '$lib/components/ui/layout/Shell.svelte'
+  import { expoOut } from 'svelte/easing'
 
   export let data
 
@@ -46,20 +49,96 @@
 
     return response.replies
   }
+
+  function addSearchParam(
+    currentSearchParams: URLSearchParams,
+    newParamString: string
+  ) {
+    // Create a new URLSearchParams object from the current search params
+    const updatedParams = new URLSearchParams(currentSearchParams)
+
+    // Parse the new parameter string
+    const newParam = new URLSearchParams(newParamString)
+
+    // Get the key and value of the new parameter
+    const [key, value]: [string, string] = newParam.entries().next().value!
+
+    // Add the new parameter to the updated params
+    updatedParams.set(key, value)
+
+    return updatedParams
+  }
 </script>
 
 <svelte:head>
-  <title>Inbox</title>
+  <title>{$t('routes.inbox.title')}</title>
 </svelte:head>
 
-<div class="flex flex-row gap-2">
-  <Header pageHeader class="justify-between items-end">
+<div class=" gap-2">
+  <div
+    class="mt-4 mb-0 sticky z-30 mx-auto max-w-full flex gap-2 md:flex-row flex-col
+items-center px-2 w-max"
+    style="top: max(1.5rem, {$contentPadding.top}px);"
+  >
+    <Tabs
+      routes={[
+        {
+          href: '?type=all',
+          name: $t('filter.location.all'),
+        },
+        {
+          href: '?type=replies',
+          name: $t('filter.inbox.replies'),
+        },
+        {
+          href: '?type=mentions',
+          name: $t('filter.inbox.mentions'),
+        },
+        {
+          href: '/inbox/messages',
+          name: $t('filter.inbox.messages'),
+        },
+      ]}
+      currentRoute={$page.url.search}
+      isSelected={(url, current, route, def) =>
+        $page.url.search == route ||
+        ($page.url.pathname == route && $page.url.search == '') ||
+        $page.url.searchParams.toString().includes(route.slice(1)) ||
+        ($page.url.search == '' && route == def)}
+      class="overflow-auto w-full"
+      buildUrl={(route, href) =>
+        href.includes('?')
+          ? '?' + addSearchParam($page.url.searchParams, href).toString()
+          : `${href}${$page.url.search}`}
+      defaultRoute="?type=All"
+    />
+    <Tabs
+      routes={[
+        {
+          href: '?unreadOnly=false',
+          name: $t('filter.location.all'),
+        },
+        {
+          href: '?unreadOnly=true',
+          name: $t('filter.unread'),
+        },
+      ]}
+      isSelected={(url, current, route, def) =>
+        $page.url.searchParams.toString().includes(route.slice(1)) ||
+        ($page.url.search == '' && route == def)}
+      buildUrl={(route, href) =>
+        '?' + addSearchParam($page.url.searchParams, href).toString()}
+      defaultRoute="?unreadOnly=true"
+    />
+  </div>
+  <Header pageHeader class="sm:flex-row justify-between flex-col">
     {$t('routes.inbox.title')}
 
     <div class="flex items-center gap-2">
       <Button
         on:click={() => goto($page.url, { invalidateAll: true })}
-        size="square-md"
+        size="square-lg"
+        rounding="xl"
         title={$t('common.refresh')}
       >
         <Icon src={ArrowPath} size="16" mini slot="prefix" />
@@ -68,8 +147,8 @@
         on:click={markAllAsRead}
         loading={markingAsRead}
         disabled={markingAsRead}
-        size="md"
-        class="h-8"
+        size="lg"
+        class="h-10"
       >
         <Icon src={Check} width={16} mini slot="prefix" />
         {$t('routes.inbox.markAsRead')}
@@ -77,40 +156,10 @@
     </div>
   </Header>
 </div>
-<div class="mt-4" />
-<div class="flex flex-row gap-4 flex-wrap items-end">
-  <Select
-    bind:value={data.unreadOnly}
-    on:change={() =>
-      searchParam(
-        $page.url,
-        'unreadOnly',
-        data.unreadOnly?.toString() ?? 'false',
-        'page'
-      )}
-  >
-    <span slot="label" class="flex items-center gap-1">
-      <Icon src={Funnel} size="15" mini />
-      {$t('filter.filter')}
-    </span>
-    <option value="false">{$t('filter.location.all')}</option>
-    <option value="true">{$t('filter.unread')}</option>
-  </Select>
-  <Select
-    bind:value={data.type}
-    on:change={() => searchParam($page.url, 'type', data.type ?? 'all', 'page')}
-  >
-    <span slot="label" class="flex items-center gap-1">
-      <Icon src={AdjustmentsHorizontal} size="15" mini />
-      {$t('filter.type')}
-    </span>
-    <option value="all">{$t('filter.location.all')}</option>
-    <option value="mentions">{$t('filter.inbox.mentions')}</option>
-    <option value="replies">{$t('filter.inbox.replies')}</option>
-    <option value="messages">{$t('filter.inbox.messages')}</option>
-  </Select>
-</div>
-<div class="flex flex-col gap-4 list-none flex-1 h-full justify-center mt-4">
+
+<div
+  class="flex flex-col list-none flex-1 h-full divide-y divide-slate-200 dark:divide-zinc-900 *:py-4"
+>
   {#if !data.data || (data.data?.length ?? 0) == 0}
     <Placeholder
       icon={Inbox}
@@ -118,16 +167,34 @@
       description={$t('routes.inbox.empty.description')}
     />
   {:else}
-    {#each data.data as item}
-      <div in:fly={{ duration: 500, y: -6, opacity: 0 }}>
-        <InboxItem {item} />
+    {#each data.data as item, index (item.id)}
+      <div
+        class="-mx-4 sm:-mx-6 px-4 sm:px-6
+        {item.read ? '' : 'bg-yellow-50/50 dark:bg-blue-500/5'}"
+        in:fly|global={{
+          duration: 1000,
+          y: 16,
+          opacity: 0,
+          easing: expoOut,
+          delay: index * 50,
+        }}
+      >
+        <InboxItem bind:item />
       </div>
     {/each}
-    <div class="ml-auto mt-auto">
-      <Pageination
-        page={data.page}
-        on:change={(p) => searchParam($page.url, 'page', p.detail.toString())}
-      />
+  {/if}
+  {#if !(data.page == 1 && (data?.data?.length ?? 0) == 0)}
+    <div
+      class="sticky z-30 mx-auto max-w-full self-end mt-auto"
+      style="bottom: max(1.5rem, {$contentPadding.bottom}px);"
+    >
+      <Tabs routes={[]} class="mx-auto">
+        <Pageination
+          hasMore={!(!data.data || (data.data?.length ?? 0) < data.limit)}
+          page={data.page}
+          on:change={(p) => searchParam($page.url, 'page', p.detail.toString())}
+        />
+      </Tabs>
     </div>
   {/if}
 </div>

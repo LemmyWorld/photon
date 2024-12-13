@@ -18,18 +18,26 @@
 
     let extracted: Tag[] = []
 
-    title = title.replace(/\[(.*?)\]/g, (match, content) => {
-      extracted.push(
-        textToTag.get(content) ?? {
-          content: content,
-        }
-      )
-      return ''
-    })
+    const newTitle = title
+      .toString()
+      .replace(/^(\[.[^\]]+\])|(\[.[^\]]+\])$/g, (match, content) => {
+        const contents = match.split(',').map((part: string) => part.trim())
+
+        contents
+          .map((i) => i.replaceAll(/(\[|\])/g, ''))
+          .forEach((content: string) => {
+            extracted.push(
+              textToTag.get(content) ?? {
+                content: content,
+              }
+            )
+          })
+        return ''
+      })
 
     return {
       tags: extracted,
-      title: title,
+      title: newTitle,
     }
   }
 </script>
@@ -37,29 +45,30 @@
 <script lang="ts">
   import CommunityLink from '$lib/components/lemmy/community/CommunityLink.svelte'
   import Avatar from '$lib/components/ui/Avatar.svelte'
-  import { Badge } from 'mono-svelte'
+  import { Badge, Popover } from 'mono-svelte'
   import UserLink from '$lib/components/lemmy/user/UserLink.svelte'
-  import RelativeDate from '$lib/components/util/RelativeDate.svelte'
+  import RelativeDate, {
+    formatRelativeDate,
+  } from '$lib/components/util/RelativeDate.svelte'
   import type { Community, Person, SubscribedType } from 'lemmy-js-client'
   import {
     Bookmark,
-    Check,
     ExclamationTriangle,
     Icon,
     LockClosed,
     Megaphone,
-    Plus,
     Tag,
     Trash,
+    PaperAirplane,
   } from 'svelte-hero-icons'
   import { getInstance } from '$lib/lemmy.js'
-  import { profile } from '$lib/auth.js'
-  import Subscribe from '../../../../routes/communities/Subscribe.svelte'
   import ShieldIcon from '../moderation/ShieldIcon.svelte'
   import { userSettings, type View } from '$lib/settings'
   import Markdown from '$lib/components/markdown/Markdown.svelte'
   import { t } from '$lib/translations'
-  import type { IconSource } from 'svelte-hero-icons'
+  import { Pencil, type IconSource } from 'svelte-hero-icons'
+  import CommunityHeader from '../community/CommunityHeader.svelte'
+  import { publishedToDate } from '$lib/components/util/date'
 
   export let community: Community | undefined = undefined
   export let showCommunity: boolean = true
@@ -70,6 +79,7 @@
   export let title: string | undefined = undefined
   export let id: number | undefined = undefined
   export let read: boolean = false
+  export let edited: string | undefined = undefined
 
   export let view: View = 'cozy'
 
@@ -87,90 +97,109 @@
 
   export let tags: Tag[] = []
 
-  $: {
-    if (title && tags.length == 0) {
-      const result = parseTags(title)
-      tags = result.tags
-      title = result.title
-    }
-  }
+  let popoverOpen = false
 </script>
 
 <!-- 
   @component
   This component will build two different things: a post's meta block and the title.
 -->
-<div
+<header
   class="grid w-full meta {community
     ? 'grid-rows-2'
     : 'grid-rows-1'} text-xs min-w-0 max-w-full"
+  class:compact={view == 'compact'}
   style={$$props.style ?? ''}
 >
-  {#if showCommunity && community}
-    <Subscribe let:subscribe let:subscribing>
+  {#if showCommunity && community && subscribed && showCommunity}
+    <Popover bind:open={popoverOpen} manual>
       <button
-        on:click={async () => {
-          if (!community) return
-          await subscribe(community.id, subscribed)
-          subscribed =
-            subscribed == 'NotSubscribed' ? 'Subscribed' : 'NotSubscribed'
-        }}
-        class="relative cursor-pointer pr-2 row-span-2 flex-shrink-0"
+        on:click={() => (popoverOpen = !popoverOpen)}
+        class="relative cursor-pointer row-span-2 flex-shrink-0 pr-2 group/community"
+        slot="target"
       >
         <Avatar
           url={community.icon}
-          width={28}
+          width={view == 'compact' ? 24 : 32}
           alt={community.name}
-          style="grid-area: avatar; height: 100%;"
-          class="flex-shrink-0"
+          class="group-hover/community:ring-2 transition-all ring-offset-0 ring-primary-900 dark:ring-primary-100"
         />
-        {#if subscribed != undefined && $profile?.jwt}
-          <div
-            class="absolute w-3.5 h-3.5 {subscribed == 'NotSubscribed'
-              ? 'bg-primary-900 dark:bg-primary-100 text-white dark:text-black'
-              : 'bg-primary-100 dark:bg-primary-900 text-black dark:text-white'} rounded-full ring-2 box-border
-            ring-slate-50 dark:ring-zinc-950 grid place-items-center transition-all
-            right-0 -translate-x-1 -translate-y-2"
-          >
-            <Icon
-              src={subscribed == 'NotSubscribed' ? Plus : Check}
-              micro
-              size="14"
-            />
-          </div>
-        {/if}
       </button>
-    </Subscribe>
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <div
+        slot="popover"
+        class="max-w-md rounded-2xl bg-white dark:bg-zinc-950"
+        on:click|stopPropagation={() => {}}
+      >
+        <CommunityHeader bind:community bind:subscribed />
+      </div>
+    </Popover>
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
   {/if}
   {#if showCommunity && community}
     <CommunityLink
       {community}
       style="grid-area: community;"
-      class="flex-shrink self-end"
+      class="flex-shrink no-list-margin"
+      badges={{
+        nsfw: community.nsfw,
+      }}
     />
   {/if}
-  <span
-    class="text-slate-600 dark:text-zinc-400 flex flex-row gap-2 items-center self-start"
+  <div
+    class="text-slate-600 dark:text-zinc-400 flex flex-row gap-2 items-center
+     no-list-margin {view == 'compact' && showCommunity
+      ? 'min-[480px]:mx-2'
+      : ''}"
     style="grid-area: stats;"
   >
     {#if user}
-      <UserLink avatarSize={20} {user} avatar={!showCommunity}>
-        <svelte:fragment slot="badges">
-          {#if badges.moderator}
-            <ShieldIcon filled width={14} class="text-green-500" />
-          {/if}
-          {#if badges.admin}
-            <ShieldIcon filled width={14} class="text-red-500" />
-          {/if}
-        </svelte:fragment>
-      </UserLink>
+      <address class="contents not-italic">
+        {#if view == 'compact' && showCommunity}
+          <Icon
+            src={PaperAirplane}
+            size="12"
+            micro
+            class="rotate-180 text-slate-400 dark:text-zinc-600 max-[480px]:hidden"
+          />
+        {/if}
+        <UserLink
+          avatarSize={20}
+          {user}
+          avatar={!showCommunity}
+          class="flex-shrink "
+        >
+          <svelte:fragment slot="badges">
+            {#if badges.moderator}
+              <ShieldIcon filled width={14} class="text-green-500" />
+            {/if}
+            {#if badges.admin}
+              <ShieldIcon filled width={14} class="text-red-500" />
+            {/if}
+          </svelte:fragment>
+        </UserLink>
+      </address>
     {/if}
     {#if published}
       <RelativeDate date={published} class="flex-shrink-0" />
     {/if}
-  </span>
+    {#if edited}
+      <div
+        title={$t('post.meta.lastEdited', {
+          default: formatRelativeDate(publishedToDate(edited), {
+            style: 'long',
+          }),
+        })}
+      >
+        <Icon src={Pencil} micro size="14" />
+      </div>
+    {/if}
+  </div>
   <div
-    class="flex flex-row justify-end items-center self-center flex-wrap gap-2 [&>*]:flex-shrink-0 badges ml-2"
+    class="flex flex-row min-[480px]:justify-end items-center self-center
+    flex-wrap gap-2 [&>*]:flex-shrink-0 badges min-[480px]:ml-2"
     style="grid-area: badges;"
   >
     {#if tags}
@@ -243,15 +272,15 @@
     {/if}
     <slot name="badges" />
   </div>
-</div>
+</header>
 {#if title && id}
   <a
     href="/post/{getInstance()}/{id}"
     class="inline hover:underline
-    hover:text-primary-900 hover:dark:text-primary-100 transition-colors
+    hover:text-primary-900 hover:dark:text-primary-100 transition-colors max-[480px]:!mt-0
     {$userSettings.font == 'satoshi/nunito'
       ? 'font-display font-semibold'
-      : 'font-medium'}"
+      : 'font-medium'} {$$props.titleClass ?? ''}"
     class:text-slate-600={$userSettings.markReadPosts && read}
     class:dark:text-zinc-400={$userSettings.markReadPosts && read}
     class:text-base={view == 'compact'}
@@ -279,6 +308,32 @@
     gap: 0;
     grid-template-rows: auto auto;
     grid-template-columns: max-content minmax(0, auto) auto;
+  }
+
+  @media screen and (max-width: 480px) {
+    .meta {
+      grid-template-areas:
+        'avatar community'
+        'avatar stats'
+        'badges badges';
+      gap: 0;
+      grid-template-rows: auto auto auto;
+      grid-template-columns: 40px minmax(0, auto);
+    }
+  }
+
+  @media screen and (max-width: 480px) {
+    .meta.compact {
+      grid-template-columns: 32px minmax(0, auto);
+    }
+  }
+
+  @media screen and (min-width: 480px) {
+    .meta.compact {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+    }
   }
 
   :global(.badge-tag-color) {

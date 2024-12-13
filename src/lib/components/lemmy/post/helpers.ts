@@ -1,7 +1,7 @@
 import { client, getInstance } from '$lib/lemmy.js'
 import type { View } from '$lib/settings'
 import { isImage, isVideo } from '$lib/ui/image'
-import { findClosestNumber } from '$lib/util'
+import { canParseUrl, findClosestNumber } from '$lib/util'
 import type { CommentView, PersonView, Post, PostView } from 'lemmy-js-client'
 
 export const isCommentMutable = (comment: CommentView, me: PersonView) =>
@@ -12,19 +12,8 @@ export const bestImageURL = (
   compact: boolean = true,
   width: number = 1024
 ) => {
-  let fetchWidth =
-    width > 1024
-      ? // -1 disables a small thumbnail
-        -1
-      : // set width to 512 if compact
-      compact
-      ? 512
-      : // otherwise, just use the original width
-        width
-
-  if (post.thumbnail_url)
-    return optimizeImageURL(post.thumbnail_url, fetchWidth)
-  else if (post.url) return optimizeImageURL(post.url, fetchWidth)
+  if (post.thumbnail_url) return optimizeImageURL(post.thumbnail_url, width)
+  else if (post.url) return optimizeImageURL(post.url, width)
 
   return post.url ?? ''
 }
@@ -36,16 +25,20 @@ export const optimizeImageURL = (
   try {
     const url = new URL(urlStr)
 
-    url.searchParams.append('format', 'webp')
+    if (!url.searchParams.has('format')) url.searchParams.set('format', 'webp')
 
-    if (width > 0) {
-      url.searchParams.append(
+    if (width > 0 && !url.searchParams.has('thumbnail')) {
+      url.searchParams.set(
         'thumbnail',
         findClosestNumber(
           [128, 196, 256, 512, 728, 1024, 1536],
           width
         ).toString()
       )
+    }
+
+    if (width == -1) {
+      url.searchParams.delete('thumbnail')
     }
 
     return url.toString()
@@ -74,14 +67,15 @@ export const mediaType = (url?: string, view: View = 'cozy'): MediaType => {
     if (isImage(url)) return 'image'
     if (isVideo(url)) return 'iframe'
     if (isYoutubeLink(url)) return 'iframe'
-    return 'embed'
+    if (canParseUrl(url)) return 'embed'
+    return 'none'
   }
 
   return 'none'
 }
-export const iframeType = (post: Post): IframeType => {
-  if (isVideo(post.url)) return 'video'
-  if (isYoutubeLink(post.url)) return 'youtube'
+export const iframeType = (url: string): IframeType => {
+  if (isVideo(url)) return 'video'
+  if (isYoutubeLink(url)) return 'youtube'
   return 'none'
 }
 

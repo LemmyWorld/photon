@@ -38,21 +38,27 @@
     content: boolean
   ): {
     top: number
+    bottom: number
     class: string
   } => {
     if (panel) {
       if (top) {
-        if (content) return { top: 80, class: '!pt-20' }
-        else return { top: 64, class: 'top-16 !max-h-[calc(100vh-4rem)]' }
-      } else return { top: 0, class: '!pb-20' }
+        if (content) return { top: 80, class: '!pt-20', bottom: 0 }
+        else
+          return {
+            top: 64,
+            class: 'top-16 !max-h-[calc(100vh-4rem)]',
+            bottom: 0,
+          }
+      } else return { top: 0, class: '!pb-20', bottom: 80 }
     } else {
-      if (!content) return { top: 0, class: '' }
+      if (!content) return { top: 0, class: '', bottom: 0 }
 
-      if (top) return { top: 96, class: '!pt-24' }
-      else return { top: 0, class: '!pb-24' }
+      if (top) return { top: 96, class: '!pt-24', bottom: 0 }
+      else return { top: 0, class: '!pb-24', bottom: 96 }
     }
 
-    return { top: 0, class: ' failed-to-calculate' }
+    return { top: 0, class: ' failed-to-calculate', bottom: 0 }
   }
 
   export let screenWidth = writable(1000)
@@ -112,13 +118,13 @@
       pointer-events-auto backdrop-blur-xl {topPanel
         ? 'bg-slate-50/50 dark:bg-zinc-950/90 border-slate-100 dark:border-zinc-900'
         : `border-slate-200 dark:border-zinc-800 shadow-2xl
-        bg-white/50 dark:bg-zinc-925/70`}"
+        bg-white/50 dark:bg-zinc-950/70`}"
       {title}
       style="transition: border-radius 250ms;"
     />
   </div>
   <div
-    class="content divide-slate-200 dark:divide-zinc-900 min-h-screen {$userSettings.newWidth
+    class="content divide-x divide-slate-100 dark:divide-zinc-900 min-h-screen {$userSettings.newWidth
       ? 'limit-width'
       : ''}"
   >
@@ -163,10 +169,13 @@
     grid-template-areas: 'main';
     justify-items: start;
   }
+
+  .content.limit-width {
+    max-width: 120rem;
+  }
+
   .content > * {
     width: 100%; /* Full width for immediate children */
-    max-width: 100rem; /* Limit width */
-    padding: 0 1rem; /* Add some padding on smaller screens */
   }
 
   @media (min-width: 768px) {
@@ -184,19 +193,23 @@
       grid-template-areas: 'sidebar main suffix';
     }
 
-    .content:is(.limit-width) {
+    .content.limit-width {
       grid-template-columns: 1fr 2fr 1fr;
     }
 
-    :global(.content:is(.limit-width) > *:first-child) {
+    :global(.content.limit-width > *:first-child) {
       max-width: 20rem;
       justify-self: end;
       width: 100%;
     }
 
-    :global(.content:is(.limit-width) > *:last-child) {
+    :global(.content.limit-width > *:last-child) {
       max-width: 20rem;
       justify-self: start;
+      width: 100%;
+    }
+
+    .main {
       width: 100%;
     }
   }
